@@ -86,15 +86,20 @@ def setup_miners():
     return miner_hashrates
 
 def simulate_current_reward_logic(miner_sequence, miner_hashrates):
-    """Simulate current reward logic (no siblings)"""
+    """Simulate current reward logic with siblings"""
     reward_balance = 0.0
     miner_rewards = {miner_id: 0.0 for miner_id in miner_hashrates.keys()}
     block_owners = []
+    block_siblings = []  # Track siblings for each block
     fee = 0
 
     for block in range(blocks):
         miner = miner_sequence[block]
         block_owners.append(miner)
+        
+        # Generate siblings for this block and assign miners to them
+        num_siblings, sibling_miners = generate_siblings_and_assign_miners()
+        block_siblings.append((num_siblings, sibling_miners))
 
         # Fee amount for current block - check if this block is a spike
         fee += spike_fee if block in spike_positions else base_fee
@@ -107,9 +112,23 @@ def simulate_current_reward_logic(miner_sequence, miner_hashrates):
         # Reward distribution for matured block
         if matured_block >= 0:
             matured_miner = block_owners[matured_block]
+            matured_siblings, matured_sibling_miners = block_siblings[matured_block]
             reward = reward_balance * reward_percentage
             reward_balance -= reward
-            miner_rewards[matured_miner] += reward * 0.8  # 80% to miner
+            
+            # Current logic: 80% of reward split equally among matured miner and siblings
+            total_reward = reward * 0.8  # 80% of total reward
+            total_participants = 1 + matured_siblings  # matured miner + siblings
+            reward_per_participant = total_reward / total_participants if total_participants > 0 else 0
+            
+            # Give reward to the matured block miner
+            miner_rewards[matured_miner] += reward_per_participant
+            
+            # Give equal reward to each sibling (if any)
+            if matured_siblings > 0:
+                # Each sibling has its own miner assigned based on sibling production probabilities
+                for sibling_miner in matured_sibling_miners:
+                    miner_rewards[sibling_miner] += reward_per_participant
 
     return miner_rewards
 
@@ -378,13 +397,13 @@ for miner_id in sorted_miner_ids:
 # Print total rewards table
 print(f"\n=== TOTAL REWARDS COMPARISON ({num_runs} runs) ===")
 print("Miner ID (Siblings%) | Current Logic | Fixed 50% | Fixed 40% | Fixed 30% | Fixed 20%")
-print("-" * 85)
+print("-" * 100)
 for miner_id in sorted_miner_ids:
     current_avg = current_stats[miner_id]['avg_reward']
-    total_rewards = [f"{current_avg:12.2f}"]
+    total_rewards = [f"{current_avg:13.2f}"]
     for fixed_pct in fixed_percentages:
         new_avg = new_stats[fixed_pct][miner_id]['avg_reward']
-        total_rewards.append(f"{new_avg:10.2f}")
+        total_rewards.append(f"{new_avg:11.2f}")
     sibling_pct = sibling_production_probabilities[miner_id] * 100
     print(f"{miner_id} ({sibling_pct:.0f}%)      | {total_rewards[0]} | {total_rewards[1]} | {total_rewards[2]} | {total_rewards[3]} | {total_rewards[4]}")
 
