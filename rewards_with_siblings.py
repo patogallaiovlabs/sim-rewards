@@ -6,13 +6,13 @@ import os
 from scipy.stats import expon
 
 # Parameters
-blocks = 20000
+blocks = 100000
 maturity_period = 4000
 reward_percentage = 0.10
 base_fee = 0.001
 spike_fee = 1.0
 num_spikes = 200  # Number of random spikes to generate
-num_runs = 10  # Number of simulation runs for statistical analysis
+num_runs = 5  # Number of simulation runs for statistical analysis
 
 # Sibling parameters
 sibling_mean = 0.6  # Average number of siblings
